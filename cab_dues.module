@@ -1,9 +1,80 @@
 <?php
 
 /**
-* CHECKS IF DATE IS WITHIN RANGE FOR EXTRA FEES
-*/
+ * CHECKS IF DATE IS WITHIN RANGE FOR EXTRA FEES
+ */
 function cab_dues_fees_check(){
 	//dated between jan 17 and oct 21
 	return ( mktime(0,0,0,01,17,date("Y")) < time() && mktime(0,0,0,10,21, date("Y")) > time() ) ? true: false;
+}
+
+/**
+ * CAB FEES
+ */
+function cab_dues_get_fee_amount($id){
+	$id = check_plain($id);
+	$dec1 = 'I have reviewed my obligations with regard to the Continuing Professional Development (CPD) program of the College of Applied Biology. As a member I am aware of the CPD program requirements and am working toward achieving them. I understand that I must maintain a written record of my professional development activities in accordance with the College Rules.';
+	$dec2 ='I hereby declare that I will not practice applied biology of any kind (paid or volunteer), while on Temporary Withdrawal status.  I further understand that the change in status will result in listing my membership as On Leave.  If at any time during the year I resume gainful employment of any kind, I will inform the College of Applied Biology and will remit dues and reinstatement fee as specified in the College Rules.';
+	$dec3 = 'I am currently enrolled in a minimum of 3 courses per semester in a program leading to education credentials suitable for meeting the admission requirements of the College.';
+	
+	$fees = array(
+		1=>325, //rpbio
+		2=>45, // rpbio retired
+		3=>100, //bit
+		4=>100,//temp withdrawl rpbio
+		5=>100,//temp widthdrawl bit
+		6=>225,// rbtech active
+		7=>30,// rbtech retired
+		8=>70,//temp withdrawl rbtech
+		9=>70,//trainee
+		10=>70,//temp widthdrawl trainee rbtech
+		11=>15,//student
+	);
+	$declarations = array(
+		1 => $dec1,
+		2 => '',
+		3 => $dec1,
+		4 => $dec2,
+		5 => $dec2,
+		6 => $dec1,
+		7 => '',
+		8 => $dec2,
+		9 => $dec1,
+		10 => $dec2,
+		11 => $dec3 
+	);
+	if(cab_dues_fees_check() === true){
+		$late_fee = check_late_fee();
+		
+		$final_fee = number_format((1 +  $late_fee) * $fees[$id], 2);
+	}else{
+		$final_fee = $fees[$id];
+	}
+	$return = array('fee'=>$final_fee, 
+					'declaration'=>$declarations[$id]
+			);
+	return drupal_json($return);
+}
+/**
+ * Implements hook_menu()
+ */
+function cab_dues_menu(){
+	$items['cab_dues_get_fees/%']=array(
+		'page callback'=>'cab_dues_get_fee_amount',
+		'page arguments' => array(1),
+		'access arguments'=>array('checkout form'),
+		'type'=>MENU_CALLBACK,
+	);
+
+	return $items;
+}
+
+function check_late_fee(){
+	if(mktime(0,0,0,01,17,date("Y")) < time()){
+		$percentage = (float)0.10 ;
+	}
+	if(mktime(0,0,0,03,1,date("Y")) < time()){
+		$percentage += (float)0.25 ;
+	}
+	return $percentage;
 }
